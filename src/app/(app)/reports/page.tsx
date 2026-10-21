@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { buttonCls } from "@/components/ui/button";
 import Link from "next/link";
 import Decimal from "decimal.js";
 import { PageHeader } from "@/components/ui/page-header";
@@ -31,7 +32,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
     <>
       <PageHeader title="Reports" description="Exportable reports for reviews and reconciliation." />
 
-      <section className="mb-4 rounded-xl border border-border bg-surface p-5">
+      <section className="mb-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">Monthly recurring spend</h2>
@@ -45,7 +46,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
                 {known.map((c) => <option key={c} value={c}>Converted to {c}</option>)}
               </select>
             </label>
-            <button type="submit" className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background">Apply</button>
+            <button type="submit" className={buttonCls("secondary")}>Apply</button>
           </form>
         </div>
 
@@ -72,13 +73,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
             )}
           </div>
         ) : (
-          <p role="alert" className="rounded-md border border-warn/40 bg-warn/10 p-3 text-sm">
+          <p role="alert" className="rounded-md border border-warn/30 bg-warn-wash p-3 text-sm">
             {converted.reason} Totals are not converted. Add the rate in <Link href="/settings" className="underline">Settings</Link>, or view each currency separately.
           </p>
         )}
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="text-sm font-semibold">CSV exports</h2>
         <p className="mb-3 mt-1 text-xs text-muted">Opens in Excel or Sheets. Amounts are per currency and never converted. Cells that look like formulas are neutralised.</p>
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -88,7 +89,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
                 <div className="text-sm font-medium">{e.title}</div>
                 <div className="text-xs text-muted">{e.hint}</div>
               </div>
-              <a href={`/reports/export/${e.kind}`} download className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface">Download</a>
+              <a href={`/reports/export/${e.kind}`} download className={`shrink-0 ${buttonCls("secondary", "sm")}`}>Download</a>
             </li>
           ))}
         </ul>

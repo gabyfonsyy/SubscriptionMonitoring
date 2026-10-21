@@ -38,10 +38,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Products & Services" description="What each subscription is used for, and which team owns it." />
 
       {error && ERRORS[error] && (
-        <p role="alert" className="mb-4 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm">{ERRORS[error]}</p>
+        <p role="alert" className="mb-4 rounded-md border border-danger/30 bg-danger-wash p-3 text-sm">{ERRORS[error]}</p>
       )}
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold">Products &amp; services</h2>
         {products.length === 0 ? (
           <p className="text-sm text-muted">No products yet.</p>
@@ -98,7 +98,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         )}
       </section>
 
-      <section className="mt-4 rounded-xl border border-border bg-surface p-5">
+      <section className="mt-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold">Teams</h2>
         {teams.length === 0 ? (
           <p className="text-sm text-muted">No teams yet.</p>

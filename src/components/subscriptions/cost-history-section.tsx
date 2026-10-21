@@ -1,20 +1,23 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Panel } from "@/components/ui/panel";
 import { CostChart, type ChartMark, type ChartPoint } from "@/components/subscriptions/cost-chart";
 import { CorrectRecordForm, RecordPriceForm } from "@/components/subscriptions/price-forms";
 import { correctCostRecordAction, recordPriceChangeAction } from "@/app/(app)/subscriptions/actions";
 import { convertSeries, monthlySeries, priceChanges, type PriceChange } from "@/domain/cost-history";
 import { frequencyLabel } from "@/domain/constants";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { table, tableWrap, tbody, td, tdRight, th, thRight, thead, tr } from "@/components/ui/table";
 import type { CostHistoryRow, ExchangeRateRow } from "@/lib/supabase/database.types";
 
 const ANNOTATION = {
-  increase: { label: "Increase", tone: "danger", glyph: "▲" },
+  increase: { label: "Increase", tone: "warn", glyph: "▲" },
   decrease: { label: "Decrease", tone: "ok", glyph: "▼" },
   discount: { label: "Discount", tone: "ok", glyph: "▼" },
-  plan_change: { label: "Plan change", tone: "info", glyph: "◆" },
+  plan_change: { label: "Plan change", tone: "violet", glyph: "◆" },
 } as const;
 
+const MARK_TONE = { warn: "warn", ok: "ok", violet: "violet" } as const;
 const signed = (n: string) => (n.startsWith("-") ? n : `+${n}`);
 
 export function CostHistorySection({
@@ -25,6 +28,8 @@ export function CostHistorySection({
   canEdit,
   archived,
   correctId,
+  currentId,
+  recordOpen = false,
 }: {
   subscriptionId: string;
   history: CostHistoryRow[]; // newest first
@@ -33,10 +38,13 @@ export function CostHistorySection({
   canEdit: boolean;
   archived: boolean;
   correctId?: string;
+  /** The record whose period contains today. */
+  currentId?: string;
+  recordOpen?: boolean;
 }) {
   const changes = priceChanges(history);
   const latest = history[0]; // newest first, may be future-dated
-  const current = history.find((h) => h.effective_from <= today && (h.effective_to == null || h.effective_to >= today));
+  const current = history.find((h) => h.id === currentId);
   const target = (current ?? latest)?.currency;
   const mixed = new Set(history.map((h) => h.currency)).size > 1;
 
@@ -57,95 +65,94 @@ export function CostHistorySection({
     marks.push({
       month: `${from.slice(0, 7)}-01`,
       label: c.percent != null && c.annotation !== "plan_change" ? `${a.label} ${signed(c.percent)}%` : a.label,
-      tone: a.tone,
+      tone: MARK_TONE[a.tone],
     });
   }
 
-  const last = history[0];
+  const basis = current ?? latest;
   const defaults = {
-    currency: (current ?? last)?.currency ?? "USD",
-    billing_frequency: (current ?? last)?.billing_frequency ?? "monthly",
-    cycle_months: String((current ?? last)?.cycle_months ?? ""),
+    currency: basis?.currency ?? "USD",
+    billing_frequency: basis?.billing_frequency ?? "monthly",
+    cycle_months: String(basis?.cycle_months ?? ""),
   };
   const correcting = canEdit ? history.find((h) => h.id === correctId) : undefined;
 
   return (
-    <section className="mt-4 rounded-xl border border-border bg-surface p-5">
-      <h2 className="mb-3 text-sm font-semibold">Cost history</h2>
-
+    <div className="space-y-5">
       {hasRecurring && target && (
-        <div className="mb-5">
-          <p className="mb-1 text-xs text-muted">
-            Normalized monthly cost in {target}
-            {mixed && " — earlier prices in other currencies are converted at the rate in effect at that date"}
-          </p>
+        <Panel
+          title="Normalized monthly cost"
+          description={`In ${target}${mixed ? ". Earlier prices in other currencies are converted at the rate in effect at that date" : ""}.`}
+        >
           <CostChart points={points} marks={marks} currency={target} />
           {gaps.length > 0 && (
-            <p role="note" className="mt-2 rounded-md border border-warn/40 bg-warn/10 p-2 text-xs">
+            <p role="note" className="mt-3 rounded-md border border-warn/30 bg-warn-wash p-2.5 text-xs text-warn">
               {gaps.length} month{gaps.length === 1 ? "" : "s"} could not be shown in {target}: {gaps[0].note} Add the missing rate in{" "}
               <Link href="/settings" className="underline">Settings</Link>.
             </p>
           )}
-        </div>
+        </Panel>
       )}
 
-      {history.length === 0 ? (
-        <p className="text-sm text-muted">No prices recorded yet.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <caption className="sr-only">Billing amount timeline, newest first</caption>
-            <thead className="text-xs uppercase tracking-wide text-muted">
-              <tr>
-                <th scope="col" className="py-2 pr-4 font-medium">Effective</th>
-                <th scope="col" className="py-2 pr-4 font-medium">Billed</th>
-                <th scope="col" className="py-2 pr-4 font-medium">Monthly</th>
-                <th scope="col" className="py-2 pr-4 font-medium">Change vs previous</th>
-                <th scope="col" className="py-2 pr-4 font-medium">Reason</th>
-                <th scope="col" className="py-2 font-medium">Recorded</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {history.map((h) => {
-                const c = changes.get(h.effective_from);
-                return (
-                  <tr key={h.id} className="align-top">
-                    <td className="py-2 pr-4">
-                      {formatDate(h.effective_from)} → {h.effective_to ? formatDate(h.effective_to) : "ongoing"}
-                      {h.effective_from > today && <Badge tone="info" glyph="◷" className="ml-2">Scheduled</Badge>}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {formatMoney(h.amount, h.currency)} <span className="text-xs text-muted">{frequencyLabel(h.billing_frequency)}</span>
-                    </td>
-                    <td className="py-2 pr-4">{h.normalized_monthly ? formatMoney(h.normalized_monthly, h.currency) : "—"}</td>
-                    <td className="py-2 pr-4">
-                      <ChangeCell change={c} type={h.change_type} />
-                    </td>
-                    <td className="py-2 pr-4">{h.reason ?? "—"}</td>
-                    <td className="py-2 text-muted">
-                      <div>{formatDateTime(h.recorded_at)}</div>
-                      {canEdit && (
-                        <Link href={correctId === h.id ? `/subscriptions/${subscriptionId}` : `/subscriptions/${subscriptionId}?correct=${h.id}`} className="text-xs text-accent underline">
-                          {correctId === h.id ? "Cancel correction" : "Correct this record"}
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <Panel title="Billing amount timeline" description="Every price this subscription has had, newest first. Nothing is overwritten." flush>
+        {history.length === 0 ? (
+          <p className="p-5 text-sm text-muted">No prices recorded yet.</p>
+        ) : (
+          <div className={tableWrap}>
+            <table className={`${table} min-w-[820px]`}>
+              <caption className="sr-only">Billing amount timeline, newest first</caption>
+              <thead className={thead}>
+                <tr>
+                  <th scope="col" className={th}>Effective</th>
+                  <th scope="col" className={thRight}>Billed</th>
+                  <th scope="col" className={thRight}>Monthly</th>
+                  <th scope="col" className={th}>Change vs previous</th>
+                  <th scope="col" className={th}>Reason</th>
+                  <th scope="col" className={th}>Recorded</th>
+                </tr>
+              </thead>
+              <tbody className={tbody}>
+                {history.map((h) => {
+                  const c = changes.get(h.effective_from);
+                  const isCurrent = h.id === currentId;
+                  const isScheduled = h.effective_from > today;
+                  return (
+                    <tr key={h.id} className={`${tr} align-top ${isCurrent ? "bg-accent-wash/50" : ""}`}>
+                      <td className={`${td} num`}>
+                        <div>{formatDate(h.effective_from)} → {h.effective_to ? formatDate(h.effective_to) : "ongoing"}</div>
+                        <div className="mt-1 flex gap-1.5">
+                          {isCurrent && <Badge tone="ok" glyph="●">Current</Badge>}
+                          {isScheduled && <Badge tone="blue" glyph="◷">Scheduled</Badge>}
+                        </div>
+                      </td>
+                      <td className={tdRight}>
+                        <div>{formatMoney(h.amount, h.currency)}</div>
+                        <div className="text-xs text-muted">{frequencyLabel(h.billing_frequency)}</div>
+                      </td>
+                      <td className={tdRight}>{h.normalized_monthly ? formatMoney(h.normalized_monthly, h.currency) : "—"}</td>
+                      <td className={td}>
+                        <ChangeCell change={c} type={h.change_type} />
+                      </td>
+                      <td className={`${td} max-w-56 text-muted`}>{h.reason ?? "—"}</td>
+                      <td className={`${td} text-muted`}>
+                        <div className="num text-xs">{formatDateTime(h.recorded_at)}</div>
+                        {canEdit && (
+                          <Link href={correctId === h.id ? `/subscriptions/${subscriptionId}?tab=cost` : `/subscriptions/${subscriptionId}?tab=cost&correct=${h.id}`} className="text-xs font-medium text-accent hover:underline">
+                            {correctId === h.id ? "Cancel correction" : "Correct"}
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
 
       {correcting && (
-        <div className="mt-4">
-          <h3 className="text-sm font-medium">
-            Correct the price effective {formatDate(correcting.effective_from)}
-          </h3>
-          <p className="text-xs text-muted">
-            Use this for mistakes in a recorded price. For a real price change, record a new one instead so the history stays accurate.
-          </p>
+        <Panel title={`Correct the price effective ${formatDate(correcting.effective_from)}`} description="Use this for mistakes in a recorded price. For a real price change, record a new one so the history stays accurate. The edit is audited.">
           <CorrectRecordForm
             key={correcting.id}
             action={correctCostRecordAction.bind(null, subscriptionId, correcting.id)}
@@ -156,18 +163,19 @@ export function CostHistorySection({
               cycle_months: String(correcting.cycle_months ?? ""),
             }}
           />
-        </div>
+        </Panel>
       )}
 
       {canEdit && !archived && (
-        <details className="mt-5 rounded-md border border-border" open={history.length === 0}>
-          <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Record price change</summary>
-          <div className="border-t border-border p-3">
+        <details id="record" className="rounded-lg border border-border bg-surface shadow-sm" open={recordOpen || history.length === 0}>
+          <summary className="cursor-pointer px-5 py-3.5 text-sm font-semibold">Record cost change</summary>
+          <div className="border-t border-border p-5">
+            <p className="mb-3 text-xs text-muted">Adds a new price period; the previous one is closed the day before. Future dates are fine.</p>
             <RecordPriceForm action={recordPriceChangeAction.bind(null, subscriptionId)} defaults={defaults} />
           </div>
         </details>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -178,7 +186,7 @@ function ChangeCell({ change, type }: { change: PriceChange | { note: string } |
   const zero = Number(change.absolute) === 0;
   return (
     <div className="space-y-1">
-      <div>
+      <div className="num">
         {zero
           ? "No change"
           : `${change.absolute.startsWith("-") ? "−" : "+"}${formatMoney(change.absolute.replace("-", ""), change.currency)} / mo`}

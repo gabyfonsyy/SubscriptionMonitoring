@@ -19,6 +19,9 @@ const MESSAGES: Record<string, string> = {
   card_retired: "Card retired. Linked subscriptions keep their history.",
   card_restored: "Card restored.",
   rule_saved: "Alert rule saved.",
+  alert_acknowledged: "Alert acknowledged.",
+  alert_resolved: "Alert resolved.",
+  alert_open: "Alert reopened.",
   saved: "Saved.",
 };
 

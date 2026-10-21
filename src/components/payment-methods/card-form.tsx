@@ -28,7 +28,7 @@ export function CardForm({
   return (
     <form action={formAction} noValidate className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {state.message && (
-        <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm sm:col-span-2 lg:col-span-4">
+        <p role="alert" className="rounded-md border border-danger/30 bg-danger-wash p-3 text-sm sm:col-span-2 lg:col-span-4">
           {state.message}
         </p>
       )}

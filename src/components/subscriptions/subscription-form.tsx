@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { buttonCls } from "@/components/ui/button";
 import { useActionState, useState } from "react";
 import { Field, SelectInput, SubmitButton, inputCls } from "@/components/ui/form";
 import { CATEGORIES, COMMON_CURRENCIES, CRITICALITIES, FREQUENCIES, STATUSES } from "@/domain/constants";
@@ -39,13 +40,13 @@ export function SubscriptionForm({
   return (
     <form action={formAction} className="space-y-6" noValidate>
       {state.message && (
-        <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm">
+        <p role="alert" className="rounded-md border border-danger/30 bg-danger-wash p-3 text-sm">
           {state.message}
         </p>
       )}
 
       {state.duplicates && state.duplicates.length > 0 && (
-        <div role="alert" className="rounded-md border border-warn/40 bg-warn/10 p-4 text-sm">
+        <div role="alert" className="rounded-md border border-warn/30 bg-warn-wash p-4 text-sm">
           <p className="font-medium">This looks similar to an existing subscription:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             {state.duplicates.map((d) => (
@@ -192,7 +193,7 @@ export function SubscriptionForm({
       </Section>
 
       <div className="flex justify-end gap-2">
-        <Link href={cancelHref} className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background">
+        <Link href={cancelHref} className={buttonCls("secondary")}>
           Cancel
         </Link>
         <SubmitButton>{mode === "create" ? "Create subscription" : "Save changes"}</SubmitButton>
@@ -203,7 +204,7 @@ export function SubscriptionForm({
 
 function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <fieldset className="rounded-xl border border-border bg-surface p-5">
+    <fieldset className="rounded-lg border border-border bg-surface p-5 shadow-sm">
       <legend className="px-1 text-sm font-semibold">
         <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-xs text-accent">
           {n}

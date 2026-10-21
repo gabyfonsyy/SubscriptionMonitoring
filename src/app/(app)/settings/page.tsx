@@ -32,7 +32,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         notice={sp}
       />
 
-      <section className="mt-4 rounded-xl border border-border bg-surface p-5">
+      <section className="mt-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
         <h2 className="text-sm font-semibold">Exchange rates</h2>
         <p className="mb-4 mt-1 text-sm text-muted">
           Reports show each currency separately by default. When you choose to convert, the latest rate dated on or before the

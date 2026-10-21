@@ -1,175 +1,212 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Decimal from "decimal.js";
+import { BellRing, CalendarClock, CalendarRange, CircleDollarSign, Repeat } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel, EmptyState } from "@/components/ui/panel";
+import { Segmented } from "@/components/ui/segmented";
+import { LinkButton } from "@/components/ui/button";
+import { Kpi } from "@/components/dashboard/kpi";
+import { BreakdownView } from "@/components/dashboard/breakdown";
 import { AttentionList } from "@/components/subscriptions/attention-list";
-import { SpendBars, TrendLine } from "@/components/charts/charts";
-import { getIntegrationStatus } from "@/lib/env.server";
+import { TrendLine } from "@/components/charts/charts";
+import { getCurrentUser } from "@/lib/auth";
 import { listAllCostHistory, listAllInventory, groupHistory } from "@/data/portfolio";
-import { buildAttentionQueue } from "@/domain/attention";
-import { expiryState } from "@/domain/cards";
-import { breakdownByCurrency, isLive, monthlyTrend, summarize, type CurrencyTotals } from "@/domain/summary";
-import { categoryLabel } from "@/domain/constants";
-import { todayISO } from "@/lib/date";
-import { formatMoney } from "@/lib/format";
+import { buildAttentionQueue, upcomingRenewals } from "@/domain/attention";
+import { breakdownByCurrency, monthOverMonth, monthlyTrend, recentPriceChanges, summarize } from "@/domain/summary";
+import { DIMENSIONS, dimension } from "@/lib/dimensions";
+import { daysBetween, todayISO } from "@/lib/date";
+import { formatDate, formatMoney } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Overview" };
 
-const MAX_CURRENCIES_CHARTED = 3;
+const PERIODS = [3, 6, 12, 24] as const;
+const monthLabel = (iso: string) =>
+  new Intl.DateTimeFormat("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
 
-export default async function OverviewPage() {
-  const status = getIntegrationStatus();
+type SP = { period?: string; currency?: string; by?: string };
+
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams;
+  const months = (PERIODS as readonly number[]).includes(Number(sp.period)) ? Number(sp.period) : 12;
   const today = todayISO();
-  const [rows, historyRows] = await Promise.all([listAllInventory(), listAllCostHistory()]);
+  const [user, rows, historyRows] = await Promise.all([getCurrentUser(), listAllInventory(), listAllCostHistory()]);
 
   const summary = summarize(rows, today);
   const attention = buildAttentionQueue(rows, today);
   const urgent = attention.filter((i) => i.severity === "high").length;
-
-  // Distinct cards used by live subscriptions that are expired or about to expire.
-  const cardsAtRisk = new Set(
-    rows
-      .filter((r) => isLive(r) && r.payment_method_id && !r.card_retired_at && r.card_expiry_month && r.card_expiry_year)
-      .filter((r) => expiryState(r.card_expiry_month!, r.card_expiry_year!, today) !== "ok")
-      .map((r) => r.payment_method_id),
-  ).size;
+  const renewals = upcomingRenewals(rows, today, 30);
 
   const history = groupHistory(historyRows);
-  const trend = monthlyTrend(
-    rows.map((r) => ({ archived_at: r.archived_at, history: history.get(r.id) ?? [] })),
-    today,
-  );
-  const byCategory = breakdownByCurrency(rows, (r) => categoryLabel(r.category));
-  const byTeam = breakdownByCurrency(rows, (r) => r.team_name ?? "No team");
+  const trendSubs = rows.map((r) => ({ id: r.id, name: r.name, archived_at: r.archived_at, history: history.get(r.id) ?? [] }));
+  const trend = monthlyTrend(trendSubs, today, months);
+  const deltas = monthOverMonth(monthlyTrend(trendSubs, today, 2));
+  const changes = recentPriceChanges(trendSubs, today, 90);
+
+  // One currency is charted at a time (never summed across currencies); default to the largest.
   const currencies = [...summary.monthly].sort((a, b) => b[1].cmp(a[1])).map(([c]) => c);
-  const charted = currencies.slice(0, MAX_CURRENCIES_CHARTED);
+  const currency = currencies.includes((sp.currency ?? "").toUpperCase()) ? sp.currency!.toUpperCase() : (currencies[0] ?? "");
+  const dim = dimension(sp.by, "product");
+  const byCategory = breakdownByCurrency(rows, DIMENSIONS[0].of).get(currency) ?? [];
+  const byDim = breakdownByCurrency(rows, dim.of).get(currency) ?? [];
+
+  const qs = (over: Partial<SP>) => {
+    const p = new URLSearchParams();
+    const merged = { period: String(months), currency: currency || undefined, by: dim.key, ...over };
+    for (const [k, v] of Object.entries(merged)) if (v) p.set(k, String(v));
+    return `/overview?${p.toString()}`;
+  };
+
+  const series = trend.map((p) => ({ label: monthLabel(p.month), value: Number(p.totals.get(currency)?.toFixed() ?? 0) }));
+  const hasData = summary.activeCount > 0;
 
   return (
     <>
-      <PageHeader title="Overview" description="Recurring spend, upcoming renewals and items that need attention." />
+      <PageHeader
+        title="Subscription Overview"
+        description={`What we manage, what it costs, what changed and what needs attention. Trend: last ${months} months.`}
+        actions={
+          <>
+            <Segmented
+              label="Reporting period"
+              active={String(months)}
+              options={PERIODS.map((p) => ({ key: String(p), label: `${p}M`, href: qs({ period: String(p) }) }))}
+            />
+            {user?.canEdit && <LinkButton href="/subscriptions/new" variant="primary">New subscription</LinkButton>}
+          </>
+        }
+      />
 
-      <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Stat label="Active subscriptions" value={String(summary.activeCount)} href="/subscriptions" />
-        <Stat label="Monthly recurring cost" totals={summary.monthly} />
-        <Stat label="Annual recurring cost" totals={summary.annual} />
-        <Stat label="Renewals in 30 days" value={String(summary.renewals30)} href="/alerts" />
-        <Stat label="Needs attention" value={String(attention.length)} sub={urgent ? `${urgent} urgent` : "nothing urgent"} tone={urgent ? "danger" : undefined} href="/alerts" />
-        <Stat label="Cards expiring soon" value={String(cardsAtRisk)} sub="expired or within 60 days, still in use" tone={cardsAtRisk ? "warn" : undefined} href="/payment-methods" />
-      </section>
-      <p className="mt-2 text-xs text-muted">Totals are shown per currency and are never added across currencies. Use Reports to convert with a dated rate.</p>
-
-      <section aria-label="Attention queue" className="mt-6 rounded-xl border border-border bg-surface p-5">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Needs attention</h2>
-          {attention.length > 6 && <Link href="/alerts" className="text-xs text-accent underline">See all {attention.length}</Link>}
-        </div>
-        {attention.length === 0 ? <p className="text-sm text-muted">Nothing needs attention right now.</p> : <AttentionList items={attention} limit={6} />}
-      </section>
-
-      {charted.map((cur) => {
-        const series = trend.map((p) => ({ month: p.month.slice(0, 7), value: Number(p.totals.get(cur)?.toFixed() ?? 0) }));
-        const cat = byCategory.get(cur) ?? [];
-        const team = byTeam.get(cur) ?? [];
-        return (
-          <section key={cur} aria-label={`Spend in ${cur}`} className="mt-6 rounded-xl border border-border bg-surface p-5">
-            <h2 className="mb-4 text-sm font-semibold">Spend in {cur}</h2>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Last 12 months</h3>
-                <TrendLine data={series} currency={cur} />
-              </div>
-              <div className="space-y-6">
-                <Breakdown title="By category" data={cat} currency={cur} />
-                <Breakdown title="By team" data={team} currency={cur} />
-              </div>
-            </div>
-          </section>
-        );
-      })}
-      {currencies.length > MAX_CURRENCIES_CHARTED && (
-        <p className="mt-2 text-xs text-muted">Charts show the {MAX_CURRENCIES_CHARTED} largest currencies; the rest appear in the totals above.</p>
-      )}
-
-      <section aria-label="Integration health" className="mt-6 rounded-xl border border-border bg-surface p-5">
-        <h2 className="text-sm font-semibold">Integration status</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          <StatusRow label="Google Chat notifications" ok={status.googleChatConfigured} />
-          <StatusRow label="Scheduled alerts (cron secret)" ok={status.cronSecretConfigured} />
-          <StatusRow label="Server database access" ok={status.serviceRoleConfigured} />
-        </ul>
-      </section>
-    </>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  totals,
-  sub,
-  tone,
-  href,
-}: {
-  label: string;
-  value?: string;
-  totals?: CurrencyTotals;
-  sub?: string;
-  tone?: "danger" | "warn";
-  href?: string;
-}) {
-  const body = (
-    <>
-      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
-      {totals ? (
-        totals.size === 0 ? (
-          <p className="mt-2 text-2xl font-semibold text-muted">—</p>
-        ) : (
-          <ul className="mt-2 space-y-0.5">
-            {[...totals].sort(([a], [b]) => a.localeCompare(b)).map(([cur, amt]) => (
-              <li key={cur} className="text-xl font-semibold tabular-nums">{formatMoney(amt.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(), cur)}</li>
-            ))}
-          </ul>
-        )
+      {!hasData ? (
+        <EmptyState
+          title="No subscriptions yet"
+          action={user?.canEdit ? <LinkButton href="/subscriptions/new" variant="primary">Add the first subscription</LinkButton> : undefined}
+        >
+          Spend, renewals and attention items appear here once subscriptions are registered.
+        </EmptyState>
       ) : (
-        <p className={`mt-2 text-2xl font-semibold ${tone === "danger" ? "text-danger" : tone === "warn" ? "text-warn" : ""}`}>{value}</p>
+        <div className="space-y-5">
+          <section aria-label="Summary" className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
+            <Kpi icon={Repeat} tint="green" label="Active subscriptions" value={String(summary.activeCount)} sub={`${rows.length - summary.activeCount} archived or expired`} href="/subscriptions" />
+            <Kpi icon={CircleDollarSign} tint="blue" label="Monthly recurring cost" totals={summary.monthly} deltas={deltas} sub="Normalized, per currency" />
+            <Kpi icon={CalendarRange} tint="violet" label="Annual recurring cost" totals={summary.annual} sub="Monthly × 12" />
+            <Kpi icon={CalendarClock} tint="cyan" label="Renewals in 30 days" value={String(summary.renewals30)} sub={renewals[0] ? `Next: ${renewals[0].name}, ${formatDate(renewals[0].renewalDate)}` : "None scheduled"} href="/alerts?tab=renewals" />
+            <Kpi
+              icon={BellRing}
+              tint={urgent ? "red" : "amber"}
+              label="Needs attention"
+              value={String(attention.length)}
+              sub={urgent ? `${urgent} urgent` : "Nothing urgent"}
+              tone={urgent ? "danger" : "default"}
+              href="/alerts"
+            />
+          </section>
+
+          <div className="grid gap-5 xl:grid-cols-3">
+            <Panel
+              className="xl:col-span-2"
+              title={`Monthly recurring spend${currency ? ` (${currency})` : ""}`}
+              description="Normalized monthly cost by effective-dated price. Archived subscriptions count until the month they were archived."
+              actions={
+                currencies.length > 1 ? (
+                  <Segmented label="Currency" active={currency} options={currencies.map((c) => ({ key: c, label: c, href: qs({ currency: c }) }))} />
+                ) : undefined
+              }
+            >
+              {currency && series.some((s) => s.value > 0) ? (
+                <TrendLine data={series} currency={currency} />
+              ) : (
+                <p className="py-10 text-center text-sm text-muted">No priced history in this period yet.</p>
+              )}
+            </Panel>
+
+            <Panel
+              title="Needs attention"
+              description={attention.length ? `${attention.length} item${attention.length === 1 ? "" : "s"}, most urgent first` : undefined}
+              actions={attention.length > 5 ? <Link href="/alerts" className="text-xs font-medium text-accent hover:underline">View all</Link> : undefined}
+            >
+              {attention.length === 0 ? (
+                <p className="text-sm text-muted">Nothing needs attention right now.</p>
+              ) : (
+                <AttentionList items={attention} limit={5} compact />
+              )}
+            </Panel>
+          </div>
+
+          {currency && (
+            <div className="grid gap-5 xl:grid-cols-2">
+              <Panel title={`Spend by category (${currency})`}>
+                <BreakdownView data={byCategory} currency={currency} label="Spend by category" />
+              </Panel>
+              <Panel
+                title={`Spend by ${dim.label.toLowerCase()} (${currency})`}
+                actions={
+                  <Segmented
+                    label="Group by"
+                    active={dim.key}
+                    options={DIMENSIONS.filter((d) => d.key !== "category" && d.key !== "frequency").map((d) => ({ key: d.key, label: d.label, href: qs({ by: d.key }) }))}
+                  />
+                }
+              >
+                <BreakdownView data={byDim} currency={currency} label={`Spend by ${dim.label.toLowerCase()}`} />
+              </Panel>
+            </div>
+          )}
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Panel title="Recent price changes" description="Last 90 days, plus any scheduled." flush>
+              {changes.length === 0 ? (
+                <p className="p-5 text-sm text-muted">No price changes recorded in this window.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {changes.slice(0, 6).map((c) => {
+                    const up = Number(c.absolute) > 0;
+                    return (
+                      <li key={`${c.subscriptionId}-${c.effectiveFrom}`} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+                        <div className="min-w-0">
+                          <Link href={`/subscriptions/${c.subscriptionId}?tab=cost`} className="block truncate font-medium hover:underline">{c.name}</Link>
+                          <p className="num text-xs text-muted">
+                            {formatDate(c.effectiveFrom)}{c.scheduled ? " · scheduled" : ""} · {formatMoney(c.previous, c.currency)} → {formatMoney(c.current, c.currency)} / mo
+                          </p>
+                        </div>
+                        <span className={`num shrink-0 text-xs font-medium ${up ? "text-warn" : "text-ok"}`}>
+                          <span aria-hidden>{up ? "▲" : "▼"}</span> {up ? "+" : "−"}
+                          {c.percent != null ? `${c.percent.replace("-", "")}%` : formatMoney(c.absolute.replace("-", ""), c.currency)}
+                          <span className="sr-only">{up ? " increase" : " decrease"}</span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Panel>
+
+            <Panel
+              title="Upcoming renewals"
+              description="Next 30 days"
+              actions={<Link href="/alerts?tab=renewals" className="text-xs font-medium text-accent hover:underline">Next 90 days</Link>}
+              flush
+            >
+              {renewals.length === 0 ? (
+                <p className="p-5 text-sm text-muted">No renewals in the next 30 days.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {renewals.slice(0, 6).map((r) => {
+                    const left = daysBetween(today, r.renewalDate);
+                    return (
+                      <li key={r.subscriptionId} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+                        <Link href={`/subscriptions/${r.subscriptionId}`} className="truncate font-medium hover:underline">{r.name}</Link>
+                        <span className="num shrink-0 text-xs text-muted">
+                          {formatDate(r.renewalDate)} · {left === 0 ? "today" : `in ${left}d`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Panel>
+          </div>
+        </div>
       )}
-      {sub && <p className="mt-1 text-xs text-muted">{sub}</p>}
     </>
-  );
-  const cls = "block rounded-xl border border-border bg-surface p-5";
-  return href ? <Link href={href} className={`${cls} hover:border-accent/50`}>{body}</Link> : <div className={cls}>{body}</div>;
-}
-
-function Breakdown({ title, data, currency }: { title: string; data: { label: string; amount: Decimal }[]; currency: string }) {
-  if (data.length === 0) return null;
-  const top = data.slice(0, 8);
-  return (
-    <div>
-      <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{title}</h3>
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-start">
-        <SpendBars data={top.map((d) => ({ name: d.label, value: Number(d.amount.toFixed()) }))} currency={currency} label={title} />
-        <table className="text-xs">
-          <caption className="sr-only">{title} ({currency} per month)</caption>
-          <tbody>
-            {top.map((d) => (
-              <tr key={d.label}>
-                <th scope="row" className="pr-3 text-left font-normal text-muted">{d.label}</th>
-                <td className="text-right tabular-nums">{formatMoney(d.amount.toDecimalPlaces(2).toFixed(), currency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {data.length > top.length && <p className="text-xs text-muted">Top {top.length} of {data.length}.</p>}
-    </div>
-  );
-}
-
-function StatusRow({ label, ok }: { label: string; ok: boolean }) {
-  return (
-    <li className="flex items-center justify-between">
-      <span>{label}</span>
-      <span className={ok ? "text-ok" : "text-warn"}>{ok ? "● Configured" : "▲ Not configured"}</span>
-    </li>
   );
 }

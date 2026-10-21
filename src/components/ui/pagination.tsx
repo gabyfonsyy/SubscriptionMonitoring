@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonCls } from "@/components/ui/button";
 
 export function Pagination({
   page,
@@ -23,12 +24,12 @@ export function Pagination({
   };
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
-  const linkCls = "rounded-md border border-border px-3 py-1.5 text-sm hover:bg-background";
-  const disabledCls = "rounded-md border border-border px-3 py-1.5 text-sm opacity-50";
+  const linkCls = buttonCls("secondary", "sm");
+  const disabledCls = buttonCls("secondary", "sm", "pointer-events-none opacity-50");
 
   return (
     <nav aria-label="Pagination" className="flex items-center justify-between gap-3 pt-4 text-sm">
-      <p className="text-muted">
+      <p className="num text-muted">
         {from}–{to} of {total}
       </p>
       <div className="flex gap-2">
@@ -41,7 +42,7 @@ export function Pagination({
             Previous
           </span>
         )}
-        <span className="px-1 py-1.5 text-muted">
+        <span className="num px-1 text-muted">
           Page {page} of {pages}
         </span>
         {page < pages ? (

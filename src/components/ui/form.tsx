@@ -2,9 +2,10 @@
 
 import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils";
+import { buttonCls } from "@/components/ui/button";
 
 export const inputCls =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted/70 disabled:opacity-60";
+  "h-9 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-foreground placeholder:text-faint disabled:opacity-60";
 
 export function Field({
   label,
@@ -28,7 +29,7 @@ export function Field({
 }) {
   return (
     <div className={cn("space-y-1", className)}>
-      <label htmlFor={id ?? name} className="block text-sm font-medium">
+      <label htmlFor={id ?? name} className="block text-xs font-medium text-foreground">
         {label}
         {required && <span className="text-danger" aria-hidden> *</span>}
       </label>
@@ -91,17 +92,7 @@ export function SubmitButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className={cn(
-        "rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-60",
-        variant === "primary" && "bg-accent text-accent-foreground hover:opacity-90",
-        variant === "secondary" && "border border-border hover:bg-background",
-        variant === "danger" && "bg-danger text-white hover:opacity-90",
-        className,
-      )}
-    >
+    <button type="submit" disabled={pending} className={buttonCls(variant, "md", className)}>
       {pending ? pendingText : children}
     </button>
   );

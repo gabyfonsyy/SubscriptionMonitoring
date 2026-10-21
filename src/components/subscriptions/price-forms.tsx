@@ -20,7 +20,7 @@ export type PriceDefaults = { currency: string; billing_frequency: string; cycle
 function Banner({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm sm:col-span-2">
+    <p role="alert" className="rounded-md border border-danger/30 bg-danger-wash p-3 text-sm sm:col-span-2">
       {message}
     </p>
   );

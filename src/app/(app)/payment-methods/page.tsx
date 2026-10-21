@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <PageHeader title="Payment Methods" description="Cards used for subscriptions. Only a nickname, the last four digits and the expiry are stored." />
 
       {atRisk.length > 0 && (
-        <div role="alert" className="mb-4 rounded-md border border-warn/40 bg-warn/10 p-3 text-sm">
+        <div role="alert" className="mb-4 rounded-md border border-warn/30 bg-warn-wash p-3 text-sm">
           <span className="font-medium">Needs a new card:</span>{" "}
           {atRisk.map((c, i) => (
             <span key={c.id}>
@@ -41,7 +41,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         </div>
       )}
 
-      <section className="rounded-xl border border-border bg-surface p-5">
+      <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
         {cards.length === 0 ? (
           <p className="text-sm text-muted">No cards yet. Add one below, then choose it on a subscription.</p>
         ) : (
@@ -138,7 +138,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       </section>
 
       {canEdit && (
-        <section className="mt-4 rounded-xl border border-border bg-surface p-5">
+        <section className="mt-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
           <h2 className="mb-1 text-sm font-semibold">Add a card</h2>
           <p className="mb-3 text-xs text-muted">Never enter the full card number or security code. They are rejected on purpose.</p>
           <CardForm idp="new-" submitLabel="Add card" teams={teamOptions} action={createCardAction} />

@@ -51,14 +51,14 @@ export function NotificationSettings({
 }) {
   const msg = noticeText(notice);
   return (
-    <section className="mb-4 rounded-xl border border-border bg-surface p-5">
+    <section className="mb-4 rounded-lg border border-border bg-surface p-5 shadow-sm">
       <h2 className="text-sm font-semibold">Notifications</h2>
       <p className="mb-3 mt-1 text-sm text-muted">
         A daily check creates alerts and posts one digest to Google Chat. Each alert is sent once; failed sends are retried on later runs.
       </p>
 
       {msg && (
-        <p role="status" className={`mb-3 rounded-md border p-3 text-sm ${msg.tone === "ok" ? "border-ok/40 bg-ok/10" : "border-warn/40 bg-warn/10"}`}>{msg.text}</p>
+        <p role="status" className={`mb-3 rounded-md border p-3 text-sm ${msg.tone === "ok" ? "border-ok/30 bg-ok-wash" : "border-warn/30 bg-warn-wash"}`}>{msg.text}</p>
       )}
 
       <ul className="mb-4 space-y-1 text-sm">

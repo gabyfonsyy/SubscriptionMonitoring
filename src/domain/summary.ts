@@ -1,6 +1,6 @@
 import Decimal from "decimal.js";
 import { addDays } from "@/lib/date";
-import { spendByCurrency, type CostPeriod } from "@/domain/cost-history";
+import { priceChanges, spendByCurrency, type CostPeriod } from "@/domain/cost-history";
 
 export type SummarySubscription = {
   status: string;
@@ -30,23 +30,28 @@ export function summarize(subs: SummarySubscription[], today: string) {
   return { activeCount: live.length, monthly, annual, renewals30 };
 }
 
-export type Breakdown = { label: string; amount: Decimal }[];
+export type Breakdown = { label: string; amount: Decimal; href?: string }[];
+export type BreakdownKey = string | { label: string; href?: string };
 
 /** Monthly spend per currency broken down by a key (category/team). Currencies are never mixed. */
-export function breakdownByCurrency(
-  subs: SummarySubscription[],
-  key: (s: SummarySubscription) => string,
+export function breakdownByCurrency<T extends SummarySubscription>(
+  subs: T[],
+  key: (s: T) => BreakdownKey,
 ): Map<string, Breakdown> {
   const acc = new Map<string, Map<string, Decimal>>();
+  const hrefs = new Map<string, string | undefined>();
   for (const s of subs.filter(isLive)) {
     if (!s.current_currency || s.current_normalized_monthly == null) continue;
     const byLabel = acc.get(s.current_currency) ?? new Map<string, Decimal>();
-    add(byLabel, key(s), new Decimal(String(s.current_normalized_monthly)));
+    const k = key(s);
+    const label = typeof k === "string" ? k : k.label;
+    if (typeof k !== "string") hrefs.set(label, k.href);
+    add(byLabel, label, new Decimal(String(s.current_normalized_monthly)));
     acc.set(s.current_currency, byLabel);
   }
   const out = new Map<string, Breakdown>();
   for (const [cur, m] of acc) {
-    out.set(cur, [...m].map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount.cmp(a.amount) || a.label.localeCompare(b.label)));
+    out.set(cur, [...m].map(([label, amount]) => ({ label, amount, href: hrefs.get(label) })).sort((a, b) => b.amount.cmp(a.amount) || a.label.localeCompare(b.label)));
   }
   return out;
 }
@@ -77,4 +82,56 @@ export function monthlyTrend(subs: TrendSubscription[], today: string, months = 
     const active = subs.filter((s) => !s.archived_at || s.archived_at.slice(0, 10) > sampled);
     return { month, totals: spendByCurrency(active, sampled) };
   });
+}
+
+export type MonthDelta = { currency: string; previous: Decimal; current: Decimal; percent: Decimal | null };
+
+/** Current month vs the month before it, per currency. Percent is null when the previous total was zero. */
+export function monthOverMonth(trend: TrendPoint[]): MonthDelta[] {
+  if (trend.length < 2) return [];
+  const prev = trend[trend.length - 2].totals;
+  const cur = trend[trend.length - 1].totals;
+  const out: MonthDelta[] = [];
+  for (const currency of new Set([...prev.keys(), ...cur.keys()])) {
+    const a = prev.get(currency) ?? new Decimal(0);
+    const b = cur.get(currency) ?? new Decimal(0);
+    out.push({ currency, previous: a, current: b, percent: a.isZero() ? null : b.minus(a).div(a).mul(100) });
+  }
+  return out.sort((x, y) => x.currency.localeCompare(y.currency));
+}
+
+export type RecentChange = {
+  subscriptionId: string;
+  name: string;
+  effectiveFrom: string;
+  currency: string;
+  previous: string;
+  current: string;
+  absolute: string;
+  percent: string | null;
+  scheduled: boolean;
+};
+
+/**
+ * Price changes that took effect in the last `days` days, plus ones scheduled to take effect, newest first.
+ * Uses the same like-for-like comparison as the cost history (no cross-currency or one-time diffs).
+ */
+export function recentPriceChanges(
+  subs: { id: string; name: string; archived_at: string | null; history: CostPeriod[] }[],
+  today: string,
+  days = 90,
+): RecentChange[] {
+  const since = addDays(today, -days);
+  const out: RecentChange[] = [];
+  for (const s of subs) {
+    if (s.archived_at) continue;
+    for (const [from, c] of priceChanges(s.history)) {
+      if ("note" in c || from < since || Number(c.absolute) === 0) continue;
+      out.push({
+        subscriptionId: s.id, name: s.name, effectiveFrom: from, currency: c.currency,
+        previous: c.previous, current: c.current, absolute: c.absolute, percent: c.percent, scheduled: from > today,
+      });
+    }
+  }
+  return out.sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom) || a.name.localeCompare(b.name));
 }

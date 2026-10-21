@@ -18,10 +18,10 @@ export type ChartPoint = {
   note: string | null;
 };
 
-export type ChartMark = { month: string; label: string; tone: "danger" | "ok" | "info" };
+export type ChartMark = { month: string; label: string; tone: "warn" | "ok" | "violet" };
 
-const TONE_VAR = { danger: "var(--danger)", ok: "var(--ok)", info: "var(--accent)" } as const;
-const GLYPH = { danger: "▲", ok: "▼", info: "◆" } as const;
+const TONE_VAR = { warn: "var(--chart-4)", ok: "var(--chart-1)", violet: "var(--chart-3)" } as const;
+const GLYPH = { warn: "▲", ok: "▼", violet: "◆" } as const;
 
 const monthLabel = (m: string) =>
   new Intl.DateTimeFormat("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(`${m}T00:00:00Z`));
@@ -40,7 +40,7 @@ export function CostChart({ points, marks, currency }: { points: ChartPoint[]; m
     <div role="img" aria-label={`Line chart of normalized monthly cost in ${currency} by month. The same figures are in the table below.`} className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 16, right: 24, bottom: 4, left: 8 }}>
-          <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="label" tick={{ fill: "var(--muted)", fontSize: 11 }} stroke="var(--border)" minTickGap={24} />
           <YAxis tick={{ fill: "var(--muted)", fontSize: 11 }} stroke="var(--border)" tickFormatter={(v: number) => fmt(v)} width={72} domain={[0, "auto"]} />
           <Tooltip
@@ -52,7 +52,7 @@ export function CostChart({ points, marks, currency }: { points: ChartPoint[]; m
               return `${l}${p?.scheduled ? " (scheduled)" : ""}${p?.note ? ` · ${p.note}` : ""}`;
             }}
           />
-          <Line type="stepAfter" dataKey="value" stroke="var(--accent)" strokeWidth={2} dot={{ r: 2.5, fill: "var(--accent)" }} connectNulls={false} isAnimationActive={false} />
+          <Line type="stepAfter" dataKey="value" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 2.5, fill: "var(--chart-1)" }} connectNulls={false} isAnimationActive={false} />
           {marks.map((m) => {
             const y = valueAt(m.month);
             if (y == null) return null;

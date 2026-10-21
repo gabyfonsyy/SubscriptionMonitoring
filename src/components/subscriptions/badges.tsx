@@ -6,7 +6,7 @@ import type { Criticality, SubscriptionStatus } from "@/lib/supabase/database.ty
 const STATUS_TONE: Record<SubscriptionStatus, { tone: Tone; glyph: string }> = {
   active: { tone: "ok", glyph: "●" },
   pending: { tone: "info", glyph: "◔" },
-  under_review: { tone: "warn", glyph: "▲" },
+  under_review: { tone: "violet", glyph: "◐" },
   cancellation_requested: { tone: "warn", glyph: "✕" },
   expired: { tone: "danger", glyph: "■" },
   archived: { tone: "neutral", glyph: "▭" },
@@ -27,7 +27,7 @@ const RISK: Record<RenewalRisk["level"], { tone: Tone; glyph: string; label: str
   overdue: { tone: "danger", glyph: "!", label: "Overdue" },
   notice_passed: { tone: "danger", glyph: "!", label: "Notice window passed" },
   due_soon: { tone: "warn", glyph: "▲", label: "Due soon" },
-  upcoming: { tone: "info", glyph: "◷", label: "Upcoming" },
+  upcoming: { tone: "blue", glyph: "◷", label: "Upcoming" },
   ok: { tone: "ok", glyph: "✓", label: "No action" },
 };
 

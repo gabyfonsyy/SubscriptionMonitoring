@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { buttonCls } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { inputCls } from "@/components/ui/form";
 
 export function LoginForm({
   disabled,
@@ -56,7 +58,7 @@ export function LoginForm({
         type="button"
         onClick={google}
         disabled={disabled || busy}
-        className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
+        className={buttonCls("primary", "md", "w-full h-10")}
       >
         Sign in with Google{domain ? ` (@${domain})` : ""}
       </button>
@@ -67,7 +69,7 @@ export function LoginForm({
             <span className="h-px flex-1 bg-border" /> development only <span className="h-px flex-1 bg-border" />
           </div>
           <form onSubmit={withPassword} className="space-y-3">
-            <label className="block text-sm">
+            <label className="block text-xs font-medium">
               Email
               <input
                 type="email"
@@ -75,10 +77,10 @@ export function LoginForm({
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                className={`mt-1 ${inputCls}`}
               />
             </label>
-            <label className="block text-sm">
+            <label className="block text-xs font-medium">
               Password
               <input
                 type="password"
@@ -86,13 +88,13 @@ export function LoginForm({
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                className={`mt-1 ${inputCls}`}
               />
             </label>
             <button
               type="submit"
               disabled={disabled || busy}
-              className="w-full rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background disabled:opacity-50"
+              className={buttonCls("secondary", "md", "w-full h-10")}
             >
               Sign in with email
             </button>

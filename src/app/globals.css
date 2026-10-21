@@ -1,45 +1,123 @@
 @import "tailwindcss";
 
-/* Design tokens: neutral surfaces, one restrained accent, subtle status colors. */
+/*
+ * Design tokens, taken from Operations Hub (its TOGE colour primitives and Sprout brand palette) with one
+ * deliberate change: the light ground is pure white, not warm off-white. Dark keeps Operations Hub's warm dark.
+ *
+ * Every colour is a light-dark(light, dark) pair, so there is a single definition per token and no duplicated
+ * dark block. The theme is driven three ways, like Operations Hub:
+ *   - no attribute  -> follows the OS (color-scheme: light dark)
+ *   - data-theme="light" / "dark" -> explicit choice, set from the cookie on the server (no flash)
+ * Components use these tokens only; no hard-coded colours in markup.
+ */
 :root {
-  --background: #f6f7f9;
-  --foreground: #14181f;
-  --surface: #ffffff;
-  --border: #e3e6eb;
-  --muted: #667085;
-  --accent: #3b4cca;
-  --accent-foreground: #ffffff;
-  --ok: #1a7f4b;
-  --warn: #b7791f;
-  --danger: #c0392b;
+  color-scheme: light dark;
+
+  /* Ground and surfaces */
+  --background: light-dark(#ffffff, #191b15);
+  --surface: light-dark(#ffffff, #23261e);
+  --surface-2: light-dark(#f6f8f7, #1d2018); /* sunken: table heads, hover rows, search field */
+  --surface-solid: light-dark(#ffffff, #23261e); /* menus and dialogs: always opaque */
+  --border: light-dark(rgb(22 32 26 / 0.1), rgb(255 255 255 / 0.09));
+  --border-strong: light-dark(rgb(22 32 26 / 0.18), rgb(255 255 255 / 0.17));
+
+  /* Ink (Operations Hub: #16201A green-black, mushroom neutrals). --muted meets AA on every surface. */
+  --foreground: light-dark(#16201a, #e4e2d9);
+  --muted: light-dark(#566563, #c6ccc3);
+  --faint: light-dark(#738482, #9ba298);
+
+  /* Brand green. --accent is for text and links; --primary is the solid button fill; --brand is the pop. */
+  --accent: light-dark(#156208, #86efa8);
+  --accent-hover: light-dark(#0f4d06, #b4f5c8);
+  --accent-foreground: light-dark(#ffffff, #0d2108);
+  --accent-wash: light-dark(#e9fae5, rgb(50 206 19 / 0.13));
+  --primary: light-dark(#156208, #1b7d0c);
+  --primary-hover: light-dark(#0f4d06, #15660a);
+  --primary-foreground: light-dark(#ffffff, #f2ffec);
+  --brand: #32ce13; /* Green Apple. Decorative only: dots, active marker, bloom */
+
+  /* Semantics. Text-safe ink + a wash for the chip fill. */
+  --ok: light-dark(#166534, #86efa8);
+  --ok-wash: light-dark(#dcf7d0, #26521f);
+  --warn: light-dark(#8a5a00, #ffde9b);
+  --warn-wash: light-dark(#ffecb8, #513c0d);
+  --danger: light-dark(#a32027, #fba6aa);
+  --danger-wash: light-dark(#ffe0e0, #55211f);
+  --danger-solid: light-dark(#a82a22, #c2352c); /* solid fills that carry white text */
+  --info: light-dark(#0c6070, #7fe3f5);
+  --info-wash: light-dark(#c6eff9, #0d4152);
+  --blue: light-dark(#1356ba, #9cc6ff);
+  --blue-wash: light-dark(#cce3ff, #14355a);
+  --violet: light-dark(#5b21b6, #c4b0fa);
+  --violet-wash: light-dark(#ded2ff, #302561);
+
+  /* Charts: a categorical set (kangkong, blueberry, ubas, mango, wintermelon, tomato) tuned for each ground */
+  --chart-1: light-dark(#17ad49, #4ade7b);
+  --chart-2: light-dark(#2578eb, #6ea8ff);
+  --chart-3: light-dark(#8139ee, #b08cff);
+  --chart-4: light-dark(#e29300, #ffbf00);
+  --chart-5: light-dark(#02afce, #1ed5f2);
+  --chart-6: light-dark(#ec4750, #f6737a);
+  --chart-grid: light-dark(rgb(22 32 26 / 0.07), rgb(255 255 255 / 0.08));
+
+  /* Aura blooms: vivid mid-tones, blurred at low opacity, read as a glow on both grounds */
+  --aura-green: #3fd11b;
+  --aura-blue: #2e86ff;
+  --aura-violet: #9a5cff;
+  --aura-opacity: light-dark(0.13, 0.1);
+
+  /* Shape and depth (Operations Hub's soft, green-tinted shadows) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px light-dark(rgb(22 32 26 / 0.05), rgb(0 0 0 / 0.4)), 0 6px 18px -14px light-dark(rgb(9 41 3 / 0.28), rgb(0 0 0 / 0.6));
+  --shadow-md: 0 1px 2px light-dark(rgb(22 32 26 / 0.06), rgb(0 0 0 / 0.5)), 0 18px 40px -22px light-dark(rgb(9 41 3 / 0.4), rgb(0 0 0 / 0.85));
+  --ring: color-mix(in srgb, var(--brand) 40%, transparent);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0e1116;
-    --foreground: #e8eaee;
-    --surface: #161a22;
-    --border: #262c38;
-    --muted: #8b93a3;
-    --accent: #7c8cf5;
-    --accent-foreground: #0e1116;
-    --ok: #4cc38a;
-    --warn: #e5b04b;
-    --danger: #ef7b6e;
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-solid: var(--surface-solid);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-wash: var(--accent-wash);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand: var(--brand);
   --color-ok: var(--ok);
+  --color-ok-wash: var(--ok-wash);
   --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
   --color-danger: var(--danger);
+  --color-danger-wash: var(--danger-wash);
+  --color-danger-solid: var(--danger-solid);
+  --color-info: var(--info);
+  --color-info-wash: var(--info-wash);
+  --color-blue: var(--blue);
+  --color-blue-wash: var(--blue-wash);
+  --color-violet: var(--violet);
+  --color-violet-wash: var(--violet-wash);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -48,9 +126,117 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth theme switching: a slow, even dissolve (about 0.9s, ease-in-out) so it reads as moving to a different
+   view rather than a flicker. Fast-start curves feel quick, so this one starts and ends gently.
+   Preferred: a View Transition cross-fades the old and new page as a whole. Fallback (no View Transitions):
+   .theme-fade lets each colour property ease over the same time. Both are skipped for reduced motion. */
+:root {
+  --theme-fade: 0.9s;
+  --theme-ease: cubic-bezier(0.45, 0, 0.2, 1);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--theme-fade);
+  animation-timing-function: var(--theme-ease);
+}
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition-property: background-color, border-color, color, fill, stroke, stop-color, box-shadow !important;
+  transition-duration: var(--theme-fade) !important;
+  transition-timing-function: var(--theme-ease) !important;
+}
+
+/* Tabular figures wherever numbers are compared */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Small mono caps label for group headings and metric names */
+.eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* A soft colour bloom behind the top of the page: the "pop" that gives surfaces something to sit on */
+.aura {
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 22rem;
+  overflow: hidden;
+  z-index: 0;
+}
+.aura::before,
+.aura::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: var(--aura-opacity);
+}
+.aura::before {
+  width: 26rem;
+  height: 16rem;
+  right: 6%;
+  top: -7rem;
+  background: var(--aura-green);
+}
+.aura::after {
+  width: 20rem;
+  height: 14rem;
+  right: 30%;
+  top: -9rem;
+  background: var(--aura-blue);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
+}
+
+/* Native controls follow the theme */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Loading skeleton shimmer, disabled for reduced motion */
+@keyframes sk-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  animation: sk-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+dialog::backdrop {
+  background: rgb(10 18 15 / 0.5);
+}
+
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }

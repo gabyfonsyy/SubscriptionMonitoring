@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { SubmitButton } from "@/components/ui/form";
+import { buttonCls } from "@/components/ui/button";
 
 /**
  * Button that opens a modal confirmation before running a server action.
@@ -28,14 +29,14 @@ export function ConfirmAction({
       <button
         type="button"
         onClick={() => ref.current?.showModal()}
-        className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background"
+        className={buttonCls("secondary")}
       >
         {trigger}
       </button>
       <dialog
         ref={ref}
         aria-labelledby="confirm-title"
-        className="m-auto w-full max-w-md rounded-xl border border-border bg-surface p-0 text-foreground backdrop:bg-black/40"
+        className="m-auto w-full max-w-md rounded-lg border border-border bg-surface-solid p-0 text-foreground shadow-md"
       >
         <form action={action} className="space-y-4 p-6">
           <h2 id="confirm-title" className="text-base font-semibold">
@@ -46,7 +47,7 @@ export function ConfirmAction({
             <button
               type="button"
               onClick={() => ref.current?.close()}
-              className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-background"
+              className={buttonCls("secondary")}
             >
               Cancel
             </button>

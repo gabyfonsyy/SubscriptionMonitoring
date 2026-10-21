@@ -12,7 +12,7 @@ function Banner({ state }: { state: RateFormState }) {
   return (
     <p
       role={state.ok ? "status" : "alert"}
-      className={`rounded-md border p-3 text-sm sm:col-span-2 ${state.ok ? "border-ok/40 bg-ok/10" : "border-danger/40 bg-danger/10"}`}
+      className={`rounded-md border p-3 text-sm sm:col-span-2 ${state.ok ? "border-ok/30 bg-ok-wash" : "border-danger/30 bg-danger-wash"}`}
     >
       {state.message}
     </p>
